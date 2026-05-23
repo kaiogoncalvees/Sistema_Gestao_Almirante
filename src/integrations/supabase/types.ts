@@ -12,6 +12,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      contas_a_pagar: {
+        Row: {
+          id: number
+          descricao: string
+          credor: string
+          valor: number
+          data_vencimento: string
+          status: string
+          categoria: string
+          centro_custo: string
+          conta_bancaria: string
+          observacao: string
+          recorrente: boolean
+          frequencia: string | null
+          data_fim: string | null
+          id_origem: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          descricao: string
+          credor?: string
+          valor: number
+          data_vencimento: string
+          status?: string
+          categoria?: string
+          centro_custo?: string
+          conta_bancaria?: string
+          observacao?: string
+          recorrente?: boolean
+          frequencia?: string | null
+          data_fim?: string | null
+          id_origem?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          descricao?: string
+          credor?: string
+          valor?: number
+          data_vencimento?: string
+          status?: string
+          categoria?: string
+          centro_custo?: string
+          conta_bancaria?: string
+          observacao?: string
+          recorrente?: boolean
+          frequencia?: string | null
+          data_fim?: string | null
+          id_origem?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       movimentacoes: {
         Row: {
           data_movimento: string

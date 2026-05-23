@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Cadastrar from "./pages/Cadastrar";
 import Detalhes from "./pages/Detalhes";
 import Relatorios from "./pages/Relatorios";
+import ContasAPagar from "./pages/ContasAPagar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,8 +22,9 @@ const App = () => (
           <Route path="/"           element={<Dashboard />} />
           <Route path="/cadastrar"  element={<Cadastrar />} />
           <Route path="/detalhes"   element={<Detalhes />} />
-          <Route path="/relatorios" element={<Relatorios />} />
-          <Route path="*"           element={<NotFound />} />
+          <Route path="/relatorios"    element={<Relatorios />} />
+          <Route path="/contas-a-pagar" element={<ContasAPagar />} />
+          <Route path="*"              element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

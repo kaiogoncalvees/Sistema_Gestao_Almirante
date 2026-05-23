@@ -52,7 +52,7 @@ const Detalhes = () => {
   });
 
   const { data: result, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['movimentacoes-paginado', page, pageSize, search, tipoFilter, centerFilter, contaFilter, sortField, sortOrder],
+    queryKey: ['movimentacoes', 'paginado', page, pageSize, search, tipoFilter, centerFilter, contaFilter, sortField, sortOrder],
     queryFn: () => fetchMovimentacoesPaginated(page, pageSize, {
       search,
       tipo:      tipoFilter,
