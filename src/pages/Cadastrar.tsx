@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Loader2, Upload } from 'lucide-react';
+import { CalendarIcon, FileText, FileSpreadsheet, Plus, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
-import { CSVImport } from '@/components/forms/CSVImport';
+import { ImportarBoletos } from '@/components/importar/ImportarBoletos';
+import { ImportarPlanilha } from '@/components/importar/ImportarPlanilha';
 
 const formSchema = z.object({
   data_movimento: z.date({ required_error: 'Data da movimentação é obrigatória' }),
@@ -43,31 +44,19 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const categorias = [
-  'Materiais para Revenda',
-  'Despesas Operacionais',
-  'Folha de Pagamento',
-  'Impostos e Taxas',
-  'Serviços Terceirizados',
-  'Manutenção',
-  'Marketing',
-  'Outros',
+  'Materiais para Revenda', 'Despesas Operacionais', 'Folha de Pagamento',
+  'Impostos e Taxas', 'Serviços Terceirizados', 'Manutenção', 'Marketing', 'Outros',
 ];
 
 const Cadastrar = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('manual');
+  const [activeTab, setActiveTab] = useState('boletos');
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      credor: '',
-      descricao: '',
-      tipo_operacao: 'Débito',
-      conta_bancaria: '',
-      valor: '',
-      status: '',
-      categoria: '',
-      centro_custo: '',
+      credor: '', descricao: '', tipo_operacao: 'Débito',
+      conta_bancaria: '', valor: '', status: '', categoria: '', centro_custo: '',
     },
   });
 
@@ -77,17 +66,16 @@ const Cadastrar = () => {
       const valor = data.tipo_operacao === 'Débito' ? -Math.abs(valorAbs) : Math.abs(valorAbs);
 
       const { error } = await supabase.from('movimentacoes').insert({
-        data_movimento: format(data.data_movimento, 'yyyy-MM-dd'),
-        credor: data.credor,
-        descricao: data.descricao || '',
-        tipo_operacao: data.tipo_operacao,
-        conta_bancaria: data.conta_bancaria || '',
+        data_movimento:  format(data.data_movimento, 'yyyy-MM-dd'),
+        credor:          data.credor,
+        descricao:       data.descricao || '',
+        tipo_operacao:   data.tipo_operacao,
+        conta_bancaria:  data.conta_bancaria || '',
         valor,
-        status: data.status || '',
-        categoria: data.categoria || '',
-        centro_custo: data.centro_custo,
+        status:          data.status || '',
+        categoria:       data.categoria || '',
+        centro_custo:    data.centro_custo,
       });
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -95,39 +83,81 @@ const Cadastrar = () => {
       form.reset();
       queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
     },
-    onError: (error: any) => {
-      toast.error('Erro ao cadastrar movimentação', { description: error.message });
+    onError: (error: unknown) => {
+      toast.error('Erro ao cadastrar movimentação', { description: (error as Error).message });
     },
   });
 
-  const onSubmit = (data: FormData) => mutation.mutate(data);
-
   return (
     <AppLayout>
-      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-6 max-w-3xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-6 max-w-4xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Cadastrar Movimentação</h1>
-          <p className="text-sm text-muted-foreground">Adicione movimentações manualmente ou importe em massa via CSV</p>
+          <h1 className="text-2xl font-bold text-foreground">Importar</h1>
+          <p className="text-sm text-muted-foreground">
+            Importe boletos PDF, planilhas de contas a pagar ou lance movimentações manualmente
+          </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="manual" className="min-h-[44px]">
-              <Plus className="w-4 h-4 mr-2" />
-              Cadastro Manual
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="boletos" className="min-h-[44px] gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Boletos</span>
+              <span className="sm:hidden">PDF</span>
             </TabsTrigger>
-            <TabsTrigger value="import" className="min-h-[44px]">
-              <Upload className="w-4 h-4 mr-2" />
-              Importar CSV
+            <TabsTrigger value="planilha" className="min-h-[44px] gap-2">
+              <FileSpreadsheet className="w-4 h-4" />
+              <span className="hidden sm:inline">Planilha Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="min-h-[44px] gap-2">
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Lançamento Manual</span>
+              <span className="sm:hidden">Manual</span>
             </TabsTrigger>
           </TabsList>
 
+          {/* Tab: Boletos PDF */}
+          <TabsContent value="boletos">
+            <div className="chart-container">
+              <div className="mb-4">
+                <h2 className="text-base font-semibold text-foreground">Importar Boletos PDF</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Faça upload dos PDFs do DDA. O sistema extrai credor, valor e vencimento automaticamente
+                  e usa a linha digitável para evitar duplicatas.
+                </p>
+              </div>
+              <ImportarBoletos />
+            </div>
+          </TabsContent>
+
+          {/* Tab: Planilha Excel */}
+          <TabsContent value="planilha">
+            <div className="chart-container">
+              <div className="mb-4">
+                <h2 className="text-base font-semibold text-foreground">Importar Planilha de Contas</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Importe uma planilha .xlsx ou .csv com as contas a pagar. Duplicatas são detectadas
+                  automaticamente pelo credor + valor + vencimento.
+                </p>
+              </div>
+              <ImportarPlanilha />
+            </div>
+          </TabsContent>
+
+          {/* Tab: Lançamento Manual de Movimentação */}
           <TabsContent value="manual">
             <div className="chart-container">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="mb-4">
+                <h2 className="text-base font-semibold text-foreground">Lançamento Manual</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Registre manualmente uma movimentação no extrato bancário.
+                </p>
+              </div>
 
-                  {/* Data da Movimentação */}
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(d => mutation.mutate(d))} className="space-y-4">
+
                   <FormField
                     control={form.control}
                     name="data_movimento"
@@ -155,7 +185,6 @@ const Cadastrar = () => {
                     )}
                   />
 
-                  {/* Credor */}
                   <FormField
                     control={form.control}
                     name="credor"
@@ -163,14 +192,13 @@ const Cadastrar = () => {
                       <FormItem>
                         <FormLabel>Credor / Beneficiário *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Nome do credor ou beneficiário" {...field} className="min-h-[44px]" />
+                          <Input placeholder="Nome do credor" {...field} className="min-h-[44px]" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  {/* Descrição */}
                   <FormField
                     control={form.control}
                     name="descricao"
@@ -185,7 +213,6 @@ const Cadastrar = () => {
                     )}
                   />
 
-                  {/* Tipo e Valor */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -206,7 +233,6 @@ const Cadastrar = () => {
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
                       name="valor"
@@ -222,7 +248,6 @@ const Cadastrar = () => {
                     />
                   </div>
 
-                  {/* Conta Bancária e Status */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -231,13 +256,12 @@ const Cadastrar = () => {
                         <FormItem>
                           <FormLabel>Conta Bancária</FormLabel>
                           <FormControl>
-                            <Input placeholder="Ex: Conta Corrente Ilha" {...field} className="min-h-[44px]" />
+                            <Input placeholder="Ex: Bradesco SM" {...field} className="min-h-[44px]" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
                       name="status"
@@ -253,7 +277,6 @@ const Cadastrar = () => {
                     />
                   </div>
 
-                  {/* Categoria e Centro de Custo */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -273,7 +296,6 @@ const Cadastrar = () => {
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
                       name="centro_custo"
@@ -296,18 +318,13 @@ const Cadastrar = () => {
                   </div>
 
                   <Button type="submit" disabled={mutation.isPending} className="w-full min-h-[48px] text-base font-semibold">
-                    {mutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
-                    Cadastrar Movimentação
+                    {mutation.isPending
+                      ? <><Loader2 className="w-5 h-5 animate-spin mr-2" />Salvando...</>
+                      : <><Plus className="w-5 h-5 mr-2" />Cadastrar Movimentação</>
+                    }
                   </Button>
                 </form>
               </Form>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="import">
-            <div className="chart-container">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Importar Dados em Massa</h3>
-              <CSVImport onClose={() => setActiveTab('manual')} />
             </div>
           </TabsContent>
         </Tabs>

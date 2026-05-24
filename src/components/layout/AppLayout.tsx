@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Plus, FileText, Table, Menu, X, CreditCard } from 'lucide-react';
+import { Home, Upload, FileText, Table, Menu, X, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -10,7 +10,7 @@ interface AppLayoutProps {
 
 const navigation = [
   { name: 'Dashboard',       icon: Home,       path: '/'               },
-  { name: 'Cadastrar',       icon: Plus,       path: '/cadastrar'      },
+  { name: 'Importar',        icon: Upload,     path: '/cadastrar'      },
   { name: 'Detalhes',        icon: Table,      path: '/detalhes'       },
   { name: 'Contas a Pagar',  icon: CreditCard, path: '/contas-a-pagar' },
   { name: 'Relatórios',      icon: FileText,   path: '/relatorios'     },
