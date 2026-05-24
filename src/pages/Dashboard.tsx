@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  format, parse, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   eachDayOfInterval, isToday, addMonths, subMonths, isSameMonth,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
