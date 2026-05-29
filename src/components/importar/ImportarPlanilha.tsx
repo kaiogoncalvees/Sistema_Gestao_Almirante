@@ -86,7 +86,7 @@ export const ImportarPlanilha = () => {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, cellDates: true }) as unknown[][];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
       if (raw.length < 2) { toast.error('Planilha vazia ou sem linhas de dados'); return; }
 
@@ -210,7 +210,7 @@ export const ImportarPlanilha = () => {
         <p className="font-semibold text-foreground">Arraste uma planilha ou clique para selecionar</p>
         <p className="text-sm text-muted-foreground mt-1">Formatos: .xlsx, .xls, .csv</p>
         <p className="text-xs text-muted-foreground mt-3 font-mono bg-muted/50 rounded px-3 py-1.5 inline-block">
-          credor | valor | vencimento | categoria | centro_custo | conta_bancaria
+          descricao | valor | vencimento | centro_custo | categoria
         </p>
         <input
           ref={inputRef}
@@ -246,11 +246,11 @@ export const ImportarPlanilha = () => {
                       onChange={e => setRows(prev => prev.map(r => r.isDuplicate ? r : { ...r, selected: e.target.checked }))}
                     />
                   </th>
-                  <th className="px-3 py-2.5">Credor</th>
+                  <th className="px-3 py-2.5">Descrição</th>
                   <th className="px-3 py-2.5 whitespace-nowrap">Vencimento</th>
-                  <th className="px-3 py-2.5 text-right">Valor</th>
+                  <th className="px-3 py-2.5">Centro de Custo</th>
                   <th className="px-3 py-2.5">Categoria</th>
-                  <th className="px-3 py-2.5">Centro</th>
+                  <th className="px-3 py-2.5 text-right">Valor</th>
                   <th className="px-3 py-2.5">Status</th>
                 </tr>
               </thead>
@@ -271,15 +271,20 @@ export const ImportarPlanilha = () => {
                         onChange={e => setRows(prev => prev.map(r => r.idx === row.idx ? { ...r, selected: e.target.checked } : r))}
                       />
                     </td>
-                    <td className="px-3 py-2 max-w-[180px] truncate font-medium">{row.credor || '—'}</td>
+                    <td className="px-3 py-2 max-w-[200px] truncate font-medium">
+                      {row.descricao || row.credor || '—'}
+                      {row.credor && row.descricao && (
+                        <span className="block text-xs text-muted-foreground truncate">{row.credor}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap tabular-nums">
                       {row.dataVencimento
                         ? format(new Date(row.dataVencimento + 'T00:00:00'), 'dd/MM/yyyy')
                         : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right font-semibold tabular-nums">{fmtBRL(row.valor)}</td>
-                    <td className="px-3 py-2 text-muted-foreground text-xs">{row.categoria || '—'}</td>
                     <td className="px-3 py-2 text-muted-foreground text-xs">{row.centroCusto || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground text-xs">{row.categoria || '—'}</td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums">{fmtBRL(row.valor)}</td>
                     <td className="px-3 py-2">
                       {row.isDuplicate ? (
                         <span className="inline-flex items-center gap-1 text-amber-500 text-xs font-medium">

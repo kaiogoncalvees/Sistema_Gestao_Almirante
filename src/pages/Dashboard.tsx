@@ -15,6 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { fetchContasAPagar, marcarComoPago, ContaAPagar } from '@/services/contasAPagar';
 import { fmtBRL, fmtCompact, parseDMY, dayKey } from '@/utils/format';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,25 @@ export default function Dashboard() {
   const { data: allContas = [], isLoading } = useQuery({
     queryKey: ['contas-a-pagar'],
     queryFn:  () => fetchContasAPagar(),
+    staleTime: 60_000,
+  });
+
+  // Saídas reais do mês corrente vindas do extrato bancário
+  const mesKey = format(new Date(), 'yyyy-MM');
+  const { data: saídasMes = [] } = useQuery({
+    queryKey: ['movimentacoes', 'saidas-mes', mesKey],
+    queryFn: async () => {
+      const inicio = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+      const fim    = format(endOfMonth(new Date()),   'yyyy-MM-dd');
+      const { data, error } = await supabase
+        .from('movimentacoes')
+        .select('valor')
+        .gte('data_movimento', inicio)
+        .lte('data_movimento', fim)
+        .eq('tipo_operacao', 'Débito');
+      if (error) throw error;
+      return (data ?? []) as { valor: number }[];
+    },
     staleTime: 60_000,
   });
 
@@ -58,15 +78,23 @@ export default function Dashboard() {
   }, [allContas]);
 
   const mesProgress = useMemo(() => {
-    const mes = allContas.filter(c =>
+    // Realizado = soma das saídas do extrato bancário no mês atual
+    const realizado = saídasMes.reduce((s, m) => s + Math.abs(m.valor), 0);
+
+    // Previsto = contas a pagar do mês (exceto canceladas)
+    const contasMes = allContas.filter(c =>
       isSameMonth(parseDMY(c.dataVencimento), new Date()) && c.status !== 'Cancelado'
     );
-    const pago    = mes.filter(c => c.status === 'Pago').reduce((s, c) => s + c.valor, 0);
-    const total   = mes.reduce((s, c) => s + c.valor, 0);
-    const pendente = total - pago;
-    const pct     = total > 0 ? Math.round((pago / total) * 100) : 0;
-    return { pago, total, pendente, pct, count: mes.length };
-  }, [allContas]);
+    const previsto = contasMes.reduce((s, c) => s + c.valor, 0);
+    const pendente = contasMes
+      .filter(c => c.status === 'Pendente' || c.status === 'Atrasado')
+      .reduce((s, c) => s + c.valor, 0);
+
+    // % baseado no maior entre realizado e previsto (evita ultrapassar 100%)
+    const base = Math.max(previsto, realizado);
+    const pct  = base > 0 ? Math.min(Math.round((realizado / base) * 100), 100) : 0;
+    return { realizado, previsto, pendente, pct, count: contasMes.length };
+  }, [allContas, saídasMes]);
 
   const centroBreakdown = useMemo(() => {
     const aberto = allContas.filter(c => c.status === 'Pendente' || c.status === 'Atrasado');
@@ -292,19 +320,22 @@ function AlertaBanner({
 
 // ── ProgressoMes ───────────────────────────────────────────────
 
-function ProgressoMes({ pago, total, pendente, pct, count }: {
-  pago: number; total: number; pendente: number; pct: number; count: number;
+function ProgressoMes({ realizado, previsto, pendente, pct, count }: {
+  realizado: number; previsto: number; pendente: number; pct: number; count: number;
 }) {
   return (
     <div className="bg-card rounded-xl border border-border p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">Pagamentos do Mês</p>
+        <div>
+          <p className="text-sm font-semibold">Pagamentos do Mês</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Realizado via extrato bancário</p>
+        </div>
         <span className="text-xs text-muted-foreground">{count} contas</span>
       </div>
 
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Pago</span>
+          <span>Realizado vs. previsto</span>
           <span className="font-medium text-foreground">{pct}%</span>
         </div>
         <div className="h-2.5 bg-muted rounded-full overflow-hidden">
@@ -317,11 +348,11 @@ function ProgressoMes({ pago, total, pendente, pct, count }: {
 
       <div className="grid grid-cols-2 gap-3 pt-1">
         <div>
-          <p className="text-xs text-muted-foreground">Pago</p>
-          <p className="text-base font-bold text-green-600 dark:text-green-400">{fmtBRL(pago)}</p>
+          <p className="text-xs text-muted-foreground">Realizado (extrato)</p>
+          <p className="text-base font-bold text-green-600 dark:text-green-400">{fmtBRL(realizado)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Pendente</p>
+          <p className="text-xs text-muted-foreground">A pagar</p>
           <p className="text-base font-bold">{fmtBRL(pendente)}</p>
         </div>
       </div>
